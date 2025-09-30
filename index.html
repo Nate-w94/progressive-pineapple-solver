@@ -7,6 +7,63 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!--
+      To run the interactive Progressive Pineapple solver without a build step we
+      rely on React and Babel loaded from public CDNs. The code below defines
+      a simple React component and renders it into the root div. When a real
+      build process is added (e.g. using Vite), this file can be replaced with
+      the compiled JavaScript bundle instead of inline Babel compilation.
+    -->
+    <!-- React and ReactDOM from unpkg CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel standalone to transpile JSX/TypeScript in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel" data-type="module">
+      /*
+       * Sample Progressive Pineapple solver implemented in React. This code
+       * replicates the functionality of the TSX source files without requiring
+       * a build step. It uses Babel to transpile JSX/ESNext syntax in the
+       * browser. For production use, replace this with a compiled bundle.
+       */
+      function evaluateEV() {
+        // TODO: replace with real EV calculation logic; returns a random value
+        return Math.random() * 6 - 3;
+      }
+
+      function App() {
+        const [ev, setEv] = React.useState(null);
+        function handleCompute() {
+          const value = evaluateEV();
+          setEv(value);
+        }
+        return (
+          <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1rem' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+              Progressive Pineapple OFC Solver
+            </h1>
+            <p style={{ marginBottom: '1rem' }}>
+              This prototype provides a minimal front‑end for experimenting with a Progressive
+              Pineapple solver. The solver logic is currently a placeholder — extend it to
+              perform real EV calculations.
+            </p>
+            <button
+              style={{ padding: '0.5rem 1rem', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}
+              onClick={handleCompute}
+            >
+              Compute Sample EV
+            </button>
+            {ev !== null && (
+              <p style={{ marginTop: '1rem' }}>
+                Sample expected value: <strong>{ev.toFixed(2)}</strong>
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      // Render the React component into the root element
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
   </body>
 </html>
