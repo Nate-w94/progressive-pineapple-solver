@@ -1,69 +1,564 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Progressive Pineapple OFC Solver</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <!--
-      To run the interactive Progressive Pineapple solver without a build step we
-      rely on React and Babel loaded from public CDNs. The code below defines
-      a simple React component and renders it into the root div. When a real
-      build process is added (e.g. using Vite), this file can be replaced with
-      the compiled JavaScript bundle instead of inline Babel compilation.
-    -->
-    <!-- React and ReactDOM from unpkg CDN -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel standalone to transpile JSX/TypeScript in the browser -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" data-type="module">
-      /*
-       * Sample Progressive Pineapple solver implemented in React. This code
-       * replicates the functionality of the TSX source files without requiring
-       * a build step. It uses Babel to transpile JSX/ESNext syntax in the
-       * browser. For production use, replace this with a compiled bundle.
-       */
-      function evaluateEV() {
-        // TODO: replace with real EV calculation logic; returns a random value
-        return Math.random() * 6 - 3;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progressive Pineapple OFC Trainer</title>
+  <style>
+    /* Basic reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: sans-serif;
+      background-color: #026873;
+      color: #f5f5f5;
+      line-height: 1.4;
+    }
+    #app {
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Left area: board and controls */
+    .game-area {
+      flex: 1;
+      padding: 1rem;
+    }
+    /* Right sidebar for stats */
+    .sidebar {
+      width: 280px;
+      background-color: #013f46;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9rem;
+    }
+    .sidebar h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .sidebar .attempts {
+      flex: 1;
+      overflow-y: auto;
+      margin-top: 0.5rem;
+    }
+    .attempt-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    /* Top controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .controls select,
+    .controls input[type="range"] {
+      margin-right: 0.5rem;
+    }
+    .controls label {
+      margin-right: 0.25rem;
+    }
+    .controls button {
+      background-color: #00798a;
+      border: none;
+      color: #fff;
+      padding: 0.4rem 0.8rem;
+      margin-right: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    /* Board rows */
+    .board {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .row {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .slot {
+      width: 48px;
+      height: 64px;
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #333;
+      background-color: rgba(255,255,255,0.1);
+      cursor: pointer;
+    }
+    .slot.filled {
+      border-style: solid;
+      background-color: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .slot.selected {
+      outline: 2px solid #ffbe0b;
+    }
+    /* Card representation */
+    .card {
+      width: 48px;
+      height: 64px;
+      border-radius: 4px;
+      border: 2px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.4rem;
+      cursor: pointer;
+      color: #333;
+      background-color: #fff;
+      position: relative;
+      font-weight: bold;
+    }
+    .card.hearts,
+    .card.diamonds {
+      color: #c62828;
+    }
+    .card.selected {
+      outline: 2px solid #ffbe0b;
+    }
+    .draw-area {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .suggestions {
+      margin-top: 1rem;
+      background-color: rgba(255,255,255,0.1);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+    .suggestion {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .suggestion-line {
+      display: flex;
+      align-items: center;
+    }
+    .suggestion-line .card-mini {
+      width: 28px;
+      height: 36px;
+      border-radius: 4px;
+      border: 1px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.2rem;
+      font-size: 0.7rem;
+      background-color: #fff;
+      color: #333;
+    }
+    .suggestion-line .card-mini.hearts,
+    .suggestion-line .card-mini.diamonds {
+      color: #c62828;
+    }
+    .ev-diff {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <!-- Load React and Babel from CDNs -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    // Suit and rank definitions for cards
+    const SUITS = ['♠','♥','♦','♣'];
+    const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+    const VALUE_MAP = {
+      '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+      'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+    };
 
-      function App() {
-        const [ev, setEv] = React.useState(null);
-        function handleCompute() {
-          const value = evaluateEV();
-          setEv(value);
+    // Generate a fresh deck of cards
+    function createDeck() {
+      const deck = [];
+      for (let s of SUITS) {
+        for (let r of RANKS) {
+          deck.push({ rank: r, suit: s });
         }
+      }
+      return deck;
+    }
+
+    // Shuffle an array in place
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // Create an empty board structure
+    function emptyBoard() {
+      return {
+        back: new Array(5).fill(null),
+        middle: new Array(5).fill(null),
+        front: new Array(3).fill(null)
+      };
+    }
+
+    // Clone a board deeply
+    function cloneBoard(board) {
+      return {
+        back: board.back.slice(),
+        middle: board.middle.slice(),
+        front: board.front.slice()
+      };
+    }
+
+    // Compute a simple score for a single row (array of card objects)
+    function rowScore(row) {
+      let score = 0;
+      const counts = {};
+      const suits = {};
+      for (let c of row) {
+        if (!c) continue;
+        score += VALUE_MAP[c.rank] || 0;
+        counts[c.rank] = (counts[c.rank] || 0) + 1;
+        suits[c.suit] = (suits[c.suit] || 0) + 1;
+      }
+      // Bonus for pairs/trips
+      for (let k in counts) {
+        if (counts[k] === 2) score += 10;
+        if (counts[k] === 3) score += 20;
+        if (counts[k] === 4) score += 40;
+      }
+      // Bonus for flush (5 cards only)
+      if (row.length === 5 && Object.keys(suits).length === 1) {
+        score += 30;
+      }
+      return score;
+    }
+
+    // Evaluate the entire board given a risk slider value (0-10)
+    function evaluateBoard(board, risk) {
+      const backScore = rowScore(board.back);
+      const middleScore = rowScore(board.middle);
+      const frontScore = rowScore(board.front);
+      const weightFront = 1 + risk / 5;
+      return backScore + middleScore + frontScore * weightFront;
+    }
+
+    // Determine available empty positions on the board
+    function availablePositions(board) {
+      const positions = [];
+      board.back.forEach((c, i) => {
+        if (!c) positions.push({ row: 'back', index: i });
+      });
+      board.middle.forEach((c, i) => {
+        if (!c) positions.push({ row: 'middle', index: i });
+      });
+      board.front.forEach((c, i) => {
+        if (!c) positions.push({ row: 'front', index: i });
+      });
+      return positions;
+    }
+
+    // Compute suggestions for placing two cards onto the board
+    function computeSuggestions(board, drawCards, risk) {
+      const suggestions = [];
+      // Only proceed if we have at least 2 cards and at least 2 available positions
+      if (drawCards.length < 2) return suggestions;
+      const avail = availablePositions(board);
+      if (avail.length < 2) return suggestions;
+      // Generate combinations of 2 positions
+      for (let i = 0; i < avail.length; i++) {
+        for (let j = i + 1; j < avail.length; j++) {
+          const posCombo = [avail[i], avail[j]];
+          // Generate combinations of 2 cards from drawCards
+          for (let a = 0; a < drawCards.length; a++) {
+            for (let b = a + 1; b < drawCards.length; b++) {
+              const cardsCombo = [drawCards[a], drawCards[b]];
+              // Assign cards to positions (in order)
+              const newBoard = cloneBoard(board);
+              newBoard[posCombo[0].row][posCombo[0].index] = cardsCombo[0];
+              newBoard[posCombo[1].row][posCombo[1].index] = cardsCombo[1];
+              const ev = evaluateBoard(newBoard, risk);
+              suggestions.push({
+                ev,
+                assignments: [
+                  { card: cardsCombo[0], pos: posCombo[0] },
+                  { card: cardsCombo[1], pos: posCombo[1] }
+                ]
+              });
+            }
+          }
+        }
+      }
+      // Sort descending by expected value (higher is better)
+      suggestions.sort((a, b) => b.ev - a.ev);
+      // Return top 5 suggestions
+      return suggestions.slice(0, 5);
+    }
+
+    function App() {
+      const [board, setBoard] = React.useState(emptyBoard());
+      const [deck, setDeck] = React.useState([]);
+      const [drawCards, setDrawCards] = React.useState([]);
+      const [selectedCardIndex, setSelectedCardIndex] = React.useState(null);
+      const [assignments, setAssignments] = React.useState([]);
+      const [risk, setRisk] = React.useState(5);
+      const [stage, setStage] = React.useState(0); // 0 = initial 5 cards, >0 subsequent draws
+      const [suggestions, setSuggestions] = React.useState([]);
+      const [attempts, setAttempts] = React.useState([]);
+      const [handsPlayed, setHandsPlayed] = React.useState(0);
+      const initialCardsRequired = 5;
+      const subsequentCardsRequired = 2;
+
+      // Start a new hand
+      const startNewHand = () => {
+        const newDeck = createDeck();
+        shuffle(newDeck);
+        const initialDraw = newDeck.splice(0, 5);
+        setDeck(newDeck);
+        setBoard(emptyBoard());
+        setDrawCards(initialDraw);
+        setSelectedCardIndex(null);
+        setAssignments([]);
+        setStage(0);
+        setSuggestions([]);
+      };
+
+      // On component mount, start a new hand
+      React.useEffect(() => {
+        startNewHand();
+      }, []);
+
+      // Update suggestions when risk or board/draw changes after confirm
+      React.useEffect(() => {
+        if (stage > 0) {
+          const sugg = computeSuggestions(board, drawCards, risk);
+          setSuggestions(sugg);
+        }
+      }, [board, drawCards, risk, stage]);
+
+      // Handle selecting a card from the draw area
+      const handleCardClick = (index) => {
+        if (stage === 0 && assignments.length >= initialCardsRequired) return;
+        if (stage > 0 && assignments.length >= subsequentCardsRequired) return;
+        if (selectedCardIndex === index) {
+          // Deselect
+          setSelectedCardIndex(null);
+        } else {
+          setSelectedCardIndex(index);
+        }
+      };
+
+      // Handle clicking a slot on the board
+      const handleSlotClick = (row, idx) => {
+        if (selectedCardIndex === null) return;
+        // If this slot is already filled or assigned this round, ignore
+        if (board[row][idx]) return;
+        if (assignments.find(a => a.pos.row === row && a.pos.index === idx)) return;
+        const card = drawCards[selectedCardIndex];
+        setAssignments(prev => [...prev, { card, pos: { row, index: idx } }]);
+        // Mark card as used for this round by setting to null in drawCards copy
+        const newDraw = [...drawCards];
+        newDraw[selectedCardIndex] = null;
+        setDrawCards(newDraw);
+        setSelectedCardIndex(null);
+      };
+
+      // Determine if we have assigned enough cards this round
+      const assignmentsNeeded = stage === 0 ? initialCardsRequired : subsequentCardsRequired;
+      const canConfirm = assignments.length === assignmentsNeeded;
+
+      // Confirm placements for this round
+      const handleConfirm = () => {
+        if (!canConfirm) return;
+        // Apply assignments to the board
+        const newBoard = cloneBoard(board);
+        assignments.forEach(a => {
+          newBoard[a.pos.row][a.pos.index] = a.card;
+        });
+        // Remove assigned cards and unused card from drawCards
+        let remainingCards = drawCards.filter(c => c !== null);
+        // Add unused card back to deck bottom
+        if (remainingCards.length > 0) {
+          setDeck(prevDeck => [...prevDeck, ...remainingCards]);
+        }
+        // Draw next 3 cards if board not full
+        let nextDraw = [];
+        const nextDeck = [...deck];
+        const emptySlots = availablePositions(newBoard).length;
+        if (emptySlots > 0) {
+          const drawCount = Math.min(3, emptySlots);
+          nextDraw = nextDeck.splice(0, drawCount);
+        }
+        // Update state
+        setBoard(newBoard);
+        setDeck(nextDeck);
+        setDrawCards(nextDraw);
+        setAssignments([]);
+        setStage(stage + 1);
+        setSelectedCardIndex(null);
+        // If board full after this confirm, compute final score and record attempt
+        if (availablePositions(newBoard).length === 0) {
+          const finalScore = evaluateBoard(newBoard, risk);
+          const dateStr = new Date().toLocaleDateString('en-US');
+          const newAttempts = [
+            ...attempts,
+            { index: attempts.length + 1, date: dateStr, value: finalScore.toFixed(3) }
+          ];
+          setAttempts(newAttempts);
+          setHandsPlayed(handsPlayed + 1);
+        }
+      };
+
+      // Create card display component
+      const Card = ({ card, selected, onClick }) => {
+        if (!card) return null;
+        const suitClass = card.suit === '♥' || card.suit === '♦' ? 'hearts' : 'spades';
         return (
-          <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1rem' }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-              Progressive Pineapple OFC Solver
-            </h1>
-            <p style={{ marginBottom: '1rem' }}>
-              This prototype provides a minimal front‑end for experimenting with a Progressive
-              Pineapple solver. The solver logic is currently a placeholder — extend it to
-              perform real EV calculations.
-            </p>
-            <button
-              style={{ padding: '0.5rem 1rem', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}
-              onClick={handleCompute}
-            >
-              Compute Sample EV
-            </button>
-            {ev !== null && (
-              <p style={{ marginTop: '1rem' }}>
-                Sample expected value: <strong>{ev.toFixed(2)}</strong>
-              </p>
-            )}
+          <div
+            className={
+              'card ' + (card.suit === '♥' || card.suit === '♦' ? 'hearts' : 'diamonds') + (selected ? ' selected' : '')
+            }
+            onClick={onClick}
+          >
+            {card.rank}{card.suit}
           </div>
         );
-      }
+      };
 
-      // Render the React component into the root element
-      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-  </body>
+      // Render
+      return (
+        <div id="container" style={{ display: 'flex', height: '100%' }}>
+          <div className="game-area">
+            {/* Controls */}
+            <div className="controls">
+              <label htmlFor="variant">Variant:</label>
+              <select id="variant" value="Progressive Pineapple" disabled>
+                <option value="Progressive Pineapple">Progressive Pineapple</option>
+              </select>
+              <label htmlFor="risk">Risk:</label>
+              <input
+                id="risk"
+                type="range"
+                min="0"
+                max="10"
+                value={risk}
+                onChange={e => setRisk(parseInt(e.target.value, 10))}
+              />
+              <span>{risk}</span>
+              <button onClick={startNewHand}>New Hand</button>
+            </div>
+            {/* Draw Area */}
+            <div className="draw-area">
+              {drawCards.map((card, idx) => (
+                <Card
+                  key={idx}
+                  card={card}
+                  selected={selectedCardIndex === idx}
+                  onClick={() => handleCardClick(idx)}
+                />
+              ))}
+            </div>
+            {/* Board */}
+            <div className="board">
+              {/* Back row */}
+              <div className="row">
+                {board.back.map((c, i) => (
+                  <div
+                    key={i}
+                    className={'slot ' + (c ? 'filled' : '')}
+                    onClick={() => handleSlotClick('back', i)}
+                  >
+                    {c ? c.rank + c.suit : null}
+                  </div>
+                ))}
+              </div>
+              {/* Middle row */}
+              <div className="row">
+                {board.middle.map((c, i) => (
+                  <div
+                    key={i}
+                    className={'slot ' + (c ? 'filled' : '')}
+                    onClick={() => handleSlotClick('middle', i)}
+                  >
+                    {c ? c.rank + c.suit : null}
+                  </div>
+                ))}
+              </div>
+              {/* Front row */}
+              <div className="row">
+                {board.front.map((c, i) => (
+                  <div
+                    key={i}
+                    className={'slot ' + (c ? 'filled' : '')}
+                    onClick={() => handleSlotClick('front', i)}
+                  >
+                    {c ? c.rank + c.suit : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={handleConfirm} disabled={!canConfirm}>Confirm</button>
+            {/* Suggestions */}
+            {stage > 0 && suggestions.length > 0 && (
+              <div className="suggestions">
+                <h3>Suggestions (Top {suggestions.length})</h3>
+                {suggestions.map((sugg, idx) => (
+                  <div key={idx} className="suggestion">
+                    <div className="suggestion-line">
+                      {sugg.assignments.map((a, j) => (
+                        <div
+                          key={j}
+                          className={
+                            'card-mini ' + ((a.card.suit === '♥' || a.card.suit === '♦') ? 'hearts' : 'diamonds')
+                          }
+                        >
+                          {a.card.rank}{a.card.suit}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="ev-diff">{sugg.ev.toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="sidebar">
+            <h3>Hands played: {handsPlayed}</h3>
+            {/* EV loss: dummy placeholder for now */}
+            <div style={{ marginBottom: '0.5rem' }}>EV (heuristic): {attempts.length > 0 ? attempts[attempts.length - 1].value : '0.000'}</div>
+            <h3>Previous attempts</h3>
+            <div className="attempts">
+              {attempts.map((att, idx) => (
+                <div key={idx} className="attempt-row">
+                  <span>{att.index}</span>
+                  <span>{att.date}</span>
+                  <span>{att.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Render the application
+    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+  </script>
+</body>
 </html>
